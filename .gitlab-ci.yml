@@ -1,0 +1,91 @@
+stages:
+  - validate
+  - plan
+  - apply
+
+
+image:
+  name: hashicorp/terraform:1.13
+  entrypoint: [""]
+
+
+variables:
+
+  TF_STATE_NAME: "eks"
+
+  TF_HTTP_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}"
+
+  TF_HTTP_LOCK_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+
+  TF_HTTP_UNLOCK_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+
+  TF_HTTP_LOCK_METHOD: "POST"
+
+  TF_HTTP_UNLOCK_METHOD: "DELETE"
+
+  TF_HTTP_USERNAME: "gitlab-ci-token"
+
+  TF_HTTP_PASSWORD: "${CI_JOB_TOKEN}"
+
+
+before_script:
+
+  - terraform version
+
+  - terraform init
+
+
+validate:
+
+  stage: validate
+
+  script:
+
+    - terraform validate
+
+
+
+plan:
+
+  stage: plan
+
+  resource_group: terraform
+
+  script:
+
+    - terraform plan  -out=tfplan
+
+
+  artifacts:
+
+    paths:
+      - tfplan
+
+    expire_in: 1 day
+
+
+
+destory:
+  stage: apply
+  resource_group: terraform
+
+  dependencies:
+
+    - plan
+  script:
+    - terraform destroy -auto-approve
+
+.apply:
+
+  stage: apply
+
+  resource_group: terraform
+
+  dependencies:
+
+    - plan
+
+  script:
+
+    - terraform apply  -auto-approve tfplan
+
